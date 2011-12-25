@@ -1,13 +1,16 @@
 Readme
 ----------------------------------------
 
-Note:	1. Please read this file and also if required refer to ./doc/index.html for complete documentation.
-	2. It requires g++ package installed.
+Note:	
+
+1. Please read this file and also if required refer to ./doc/index.html for complete documentation.
+2. It requires g++ package installed.
 	
 AlgoSim
 ---------------------------------------
 
 Contents of the package:
+
 1. algos : This folder contains the algorithms, the source code and any images, particular to the algorithm to be simulated. 
 	a. common : This folder contains the common files required to compile the algorithms, like headers.
 
@@ -27,18 +30,20 @@ Contents of the package:
 
 How it works?
 ---------------------------------------
-	To run the application just double-click the 'algosim'. The external libraries are linked statically, hence it can run on virtually any Linux machines. When AlgoSim is run, it looks for the algos folder and compiles the .cpp files in the folders in algos folder and builds a Shared Object (.so file; Shared Object is the same as Dynamic Link Library or .dll in Windows). Then it attempts to load the Shared Object and reads information about the algorithm. Then it lists the available algorithms and asks user to choose one. Once user chooses an algorithm the control is passed on to the selected algorithm.
-	Algosim provides this basic mechanism to dynamically load algorithms. This allows algorithms to be added without recompiling the main application. Thus algorithms are just like plugins plugged into the main application.
-	Algosim also provides some functionalities and support systems, to help write new algorithms easily. These includes an Animation library which supports sprite based animations. It also provides asynchronous message passing.
+To run the application just double-click the 'algosim'. The external libraries are linked statically, hence it can run on virtually any Linux machines. When AlgoSim is run, it looks for the algos folder and compiles the .cpp files in the folders in algos folder and builds a Shared Object (.so file; Shared Object is the same as Dynamic Link Library or .dll in Windows). Then it attempts to load the Shared Object and reads information about the algorithm. Then it lists the available algorithms and asks user to choose one. Once user chooses an algorithm the control is passed on to the selected algorithm.
+
+Algosim provides this basic mechanism to dynamically load algorithms. This allows algorithms to be added without recompiling the main application. Thus algorithms are just like plugins plugged into the main application.
+
+Algosim also provides some functionalities and support systems, to help write new algorithms easily. These includes an Animation library which supports sprite based animations. It also provides asynchronous message passing.
 
 
 How to write a new Algorithm?
 ---------------------------------------
-	Implementing a new algorithm is very easy. We just need to include the main library header and create some classes which inherits some Base classes and implement some virtual functions to get the skelton up and running. Further algorithm specific logic can be added easily. You may use support libraries and functions provided by the algosim to speed up the development process. Please refer to the two algorithms, Booth and Robertson algorithms, which will guide you through the process of developing a new algorithm
+Implementing a new algorithm is very easy. We just need to include the main library header and create some classes which inherits some Base classes and implement some virtual functions to get the skelton up and running. Further algorithm specific logic can be added easily. You may use support libraries and functions provided by the algosim to speed up the development process. Please refer to the two algorithms, Booth and Robertson algorithms, which will guide you through the process of developing a new algorithm
 	
 	
 Future?
 ---------------------------------------
-	Many more algorithms can simulated using AlgoSim which has diagrametic representation and can be expressed through simple sprite animation. Also there are some Thread Synchronisation problems in Algosim, which is due to the fact that the graphics library used here was not designed keeping multithreading in mind. So you may observe some issues regarding color mixups.
+Many more algorithms can simulated using AlgoSim which has diagrametic representation and can be expressed through simple sprite animation. Also there are some Thread Synchronisation problems in Algosim, which is due to the fact that the graphics library used here was not designed keeping multithreading in mind. So you may observe some issues regarding color mixups.
 	
 	
