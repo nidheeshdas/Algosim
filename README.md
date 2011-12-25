@@ -1,13 +1,8 @@
-=======================================
-=======================================
-=============== Readme ================
-=======================================
-=======================================
+Readme
+----------------------------------------
 
 Note:	1. Please read this file and also if required refer to ./doc/index.html for complete documentation.
-	2. To run the application, first set "Allow execution" option under "Permissions" tab in Properties page of 'algosim' by right-clicking 'algosim'. Then double-click the 'algosim' icon.
-	3. It requires g++ package installed.
-	4. If you have any trouble, please contact me: nidheeshdas@gmail.com or 9969010620
+	2. It requires g++ package installed.
 	
 AlgoSim
 ---------------------------------------
@@ -15,14 +10,19 @@ AlgoSim
 Contents of the package:
 1. algos : This folder contains the algorithms, the source code and any images, particular to the algorithm to be simulated. 
 	a. common : This folder contains the common files required to compile the algorithms, like headers.
+
 2. doc : The complete documentation generated out of source code using Doxygen. To begin reading documentation, start with index.html file in the doc folder.
+
 3. lib : This folder contains the compiled form of external libraries used in the project. 
 	1. libmgrxX.a : The MGRX graphics library. Compiled to archive, has no other dependencies.
 	2. libptypes.a: The Portable Types library. Used for multithreading. All animations and message passing is done using this library. This requires 'pthread' library, which is present in all Linux machines.
 	Subfolder 'src' has the source code of these two libraries.
+
 4. src : This folder contains the entire source code of AlgoSim. The file 'compile' contains the command-line required to compile the code. To compile, 'libjpeg', 'libpthread' and 'libX11' libraries are required which is present in most Linux systems.
+
 5. algosim : The executable file. Just double-click the 'algosim' to run the application.
-6. README : This file.
+
+6. README.md : This file.
 
 
 How it works?
