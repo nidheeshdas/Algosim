@@ -1,0 +1,1 @@
+g++ -g3 -I./event/ -I./ -I./otherheaders/  *.cpp ../lib/libptypes.a  ../lib/libmgrxX.a  -lX11 -ljpeg -lpthread -fpermissive -rdynamic -o ../algosim

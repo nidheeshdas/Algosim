@@ -1,0 +1,545 @@
+#ifndef LIBALGOSIM_H_
+#define LIBALGOSIM_H_
+#ifdef DEFINE_GLOBALS
+#define GLOBAL
+#else // !DEFINE_GLOBALS
+#define GLOBAL extern
+#endif
+#undef DEFINE_GLOBALS
+#include "pasync.h"
+#include "Listener.hh"
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <bitset>
+#include <iomanip>
+#include "mgrx.h"
+#include "mgrxkeys.h"
+#include "ptypes.h"
+#include <dlfcn.h>
+#include <dirent.h>
+#include <cstring>
+#include <map>
+
+using namespace std;
+/**
+ * Used to represent Jpeg in myConsole::DrawImage
+ * @sa myConsole::DrawImage
+ */
+#define I_JPG 0
+/**
+ * Used to represent PNM in myConsole::DrawImage
+ * @sa myConsole::DrawImage
+ */
+#define I_PNM 1
+/**
+ * Used to represent PNM stored in a character array in myConsole::DrawImage
+ * @sa myConsole::DrawImage
+ */
+#define I_PNM_BUFFER 2
+
+class IAlgoSim;
+class Blackboard_base;
+class Animation_base;
+class Algorithm_base;
+class appmain;
+/**
+ * A mutex object to allow serial access to X server. (Not really required, but
+ * still used for stability issue.
+ */
+GLOBAL PTYPES_NAMESPACE::mutex xcomm;
+GLOBAL PTYPES_NAMESPACE::mutex gcsetxy;
+
+/**
+ \file
+ The main and the only header file
+ */
+
+/**
+ Represents a point on screen. It has only two members x and y.
+ */
+class point
+{
+public:
+	/**
+	 * Represents X co-ordinate represented by the point object.
+	 */
+	int x;
+	/**
+	 * Represents Y co-ordinate represented by the point object.
+	 */
+	int y;
+	/**
+	 * @param x represents x coordinate
+	 * @param y represents y coordinate
+	 */
+	point(int x, int y);
+	point()
+	{
+	}
+};
+/**
+ * Utility funtion to convert an integer to string. It does the reverse of the Standard
+ * Library funtion atoi()
+ * @param i the number to be converted into the string
+ * @return the string that represents the number i
+ */
+GLOBAL string itoa(int i);
+/**
+ * Utility funtion to convert an integer to binary string in the form of 1's and 0's
+ * @param i the number to be converted into the binary string
+ * @param numBits the number of bits to written in the output string
+ * @return the string that represents the number i om binary form
+ */
+GLOBAL string itobs(int x, int numBits);
+//////////End of Utility///////////////////
+
+/**
+ *  myConsole: The IO wrapper. It currently uses MGRX 1.0 library with Xlib
+ */
+class myConsole: public basic_stringstream<char>
+{
+private:
+	/**
+	 * represents the current position - the X coordinate
+	 */
+	int curx;
+	/**
+	 * represents the current position - the Y coordinate
+	 */
+	int cury;
+	GrEvent ev;
+public:
+	int console_width, console_height;
+	/**
+	 * A GrTextOption object which represents a structure containing options used to print
+	 * the text like forecolor and backcolor etc.
+	 * @note
+	 * See the MGRX documentation for details
+	 */
+	GrTextOption gto;
+	myConsole()
+	{
+	}
+	myConsole(myConsole& cpy);
+	/**
+	 * Initialise the window.
+	 * @param x The width of the screen
+	 * @param y The height of the screen
+	 */
+	void Init(int x, int y);
+	~myConsole();
+	/**
+	 * Sets the cursor
+	 */
+	void setXY(int x, int y);
+	point currXY;
+	/**
+	 * Prints the buffer at given point
+	 */
+	void print(int, int);
+	/**
+	 * Prints the buffer at the cursor
+	 */
+	void print();
+	/**
+	 * Prints the given string at the cursor.
+	 */
+	void printf(string buf);
+	/**
+	 * Prints the string at the given point
+	 */
+	void printAtXY(string, int, int);
+	/**
+	 * Prints the character at the cursor
+	 */
+	void printchar(int c);
+	/**
+	 * Draws the image
+	 * @param ltx Left top corner x coordinate
+	 * @param lty Left top corner y coordinate
+	 * @param rbx Right bottom x coordinate
+	 * @param rby Right bottom y coordinate
+	 * @param i_type The type of image (I_JPG, I_PNM, I_PNM_BUFFER)
+	 * @param addr The address of image in case of jpg and pnm and the pointer to
+	 * char array which stores the pnm image in case of pnm_buffer
+	 * @sa I_JPG
+	 * @sa I_PNM
+	 * @sa I_PNM_BUFFER
+	 */
+	void DrawImage(int ltx, int lty, int rbx, int rby, int i_type, const char * addr);
+	/**
+	 * Clears the area
+	 */
+	void clearArea(int, int, int, int);
+	/**
+	 * Clears the entire screen
+	 */
+	void clrscr();
+	/**
+	 * Clears the buffer
+	 */
+	void clean();
+	/**
+	 * Read a single keystroke
+	 * @return ASCII key code of entered key
+	 */
+	unsigned short int KeyRead();
+	/**
+	 * Reads a string terminates reading when \n is entered. Output doesn't contain \n
+	 */
+	string scan();
+	/**
+	 * Flushes event queue
+	 */
+	void EventFlush();
+};
+
+/**
+ * The state data structure stores the state of the machine(algorithm). It
+ * stores the step name and the values of the registers in an integer vector.
+ */
+
+class state: public PTYPES_NAMESPACE::message
+{
+public:
+	string StepName;
+	vector<int> values;
+	state(const state &s) :
+		message(s.id)
+	{
+		StepName = s.StepName;
+		values = s.values;
+	}
+	state() :
+		message(-1)
+	{
+	}
+	state(int iid, string sn, vector<int> val) :
+		message(iid), StepName(sn), values(val)
+	{
+	}
+	state(int iid, string sn) :
+		message(iid), StepName(sn)
+	{
+	}
+	state(int iid) :
+		message(iid)
+	{
+	}
+	state& operator=(const state& s);
+};
+/**
+ * A vector<state> that stores all the states that the machine has undergone.
+ * It is used to backward and foreward during execution.
+ */
+GLOBAL vector<state> memory;
+/**
+ * The index in vector<state> memory giving the current state.
+ */
+GLOBAL int current_state;
+GLOBAL myConsole gc;
+
+#define consolewidth 800
+#define consoleheight 600
+/**
+ * Pointer to current appmain class
+ */
+GLOBAL appmain *cur_appmain;
+/**
+ * Pointer (of type Blackboard_base) to current blackboard class
+ */
+GLOBAL Blackboard_base *cur_blackboard;
+/**
+ * Pointer (of type Animation_base) to current animation class
+ */
+GLOBAL Animation_base *cur_anim;
+/**
+ * Pointer (of type Algorithm_base) to current algorithm class
+ */
+GLOBAL Algorithm_base *cur_algo;
+/**
+ * Pointer to current simulation class
+ */
+GLOBAL IAlgoSim *cur_sim;
+
+/**
+ * The algorithm base class. A user algorithm must inherit from this class to
+ * implement its algorithm
+ */
+class Algorithm_base: public Listener<state>
+{
+	state local_state;
+public:
+	Algorithm_base();
+	/**
+	 * The pure virtual function for processing events of type state
+	 */
+	virtual void processEvent(const state &ev)=0;
+	bitset<16> reg_AC;
+	bitset<16> reg_M;
+	bitset<16> reg_Q;
+	bool f;
+	/*
+	 * The size of each register.
+	 */
+	int regSize;
+	string Step_Name;
+	void CreateState();
+	/**
+	 * Used by algorithm_base class to generate the state object based on current set of values.
+	 * This should be implemented by user algo and put the values of all registers into
+	 * the state object
+	 * @return the state object generated by current set of values
+	 */
+	virtual state CreateCurrentState()=0;
+	/**
+	 * This should be overridden by user algo. After completing a in-between-step
+	 * oprations appmain uses this function to ask the machine to reinitialise
+	 * it's registers from the given state.
+	 * @param  s the state from which the user algo must initialise its registers
+	 */
+	virtual void ReInitialiseFromState(state)=0;
+	/**
+	 * Must be overridden by user algo. This is the main() of the algorithm. The working
+	 * of the algorithm should be written in this function. CreateState() must be
+	 * called after completion of each step.
+	 * @sa CreateState()
+	 */
+	virtual void StartMachine()=0;
+};
+/**
+ * Represents a path or a collection of points. It is used for animations.
+ */
+class path
+{
+	/**
+	 * Collection of points
+	 */
+	vector<point> m_path;
+	/**
+	 * Calculates the total distance based on the given set of points
+	 */
+	void CalculateTotalDistance();
+	/**
+	 * Given the path and the distance, it calculates the point which is at p distance
+	 * through the given path
+	 * @param p the distance from starting point
+	 * @return the point object representing the point at p distance from starting point
+	 * through the given path
+	 */
+	point GetPointByDistance(int p);
+	int m_totalDistance;
+public:
+	/**
+	 * Accessor for adding points to the path
+	 * @param x X co-ordinate
+	 * @param y Y co-ordinate
+	 */
+	void AddPoint(int x, int y);
+	/**
+	 * Gets the point through the path which is at p% from the starting point.
+	 * @param p percentage
+	 * @return point object
+	 */
+	point GetPointByPercentage(int p);
+
+};
+/**
+ * Represents a animation. It is a threaded class, i.e. it runs on a seperate thread.
+ * Use the control member to start and stop the animation.
+ *
+ * To start a sprite animation use
+ *
+ * @code
+ * mySprite.control.post();
+ * @endcode
+ *
+ * To stop a sprite animation use
+ *
+ * @code
+ * mySprite.control.reset();
+ * @endcode
+ *
+ * To use these functionalities the sprite thread has to be already started using
+ *
+ * @code
+ * mySprite.start();
+ * @endcode
+ */
+class sprite: public PTYPES_NAMESPACE::thread
+{
+public:
+	sprite() :
+		thread(false), control(false, false)
+	{
+		updatePoint.x = -1;
+		updatePoint.y = -1;
+		bitLength = 16;
+	}
+	~sprite();
+	/**
+	 * Size of register that this sprite is going to update
+	 */
+	int bitLength;
+	/**
+	 * Collection of points represnting the path
+	 */
+	path m_path;
+	/**
+	 * Adds the point to the path
+	 */
+	void AddPoint(int x, int y);
+	/**
+	 * A trigger object to control the start/stop functions of sprite
+	 */
+	PTYPES_NAMESPACE::trigger control;
+	/**
+	 * The point object locating the position where the sprite will update value
+	 */
+	point updatePoint;
+	/**
+	 * The new value after the circle reaches it's destination
+	 */
+	int new_value;
+	/**
+	 * The previous value
+	 */
+	int prev_value;
+	/**
+	 * Overridden function from base class. The ThreadMain() of the sprite thread
+	 */
+	void execute();
+	void stop();
+};
+/**
+ * The Animation base class. A user algorithm must inherit from this class to
+ * implement its animation
+ */
+class Animation_base: public Listener<state>
+{
+public:
+	Animation_base();
+	~Animation_base()
+	{
+
+	}
+	/**
+	 * Processes the event of type state and calls virtual function process process
+	 */
+	void processEvent(const state& s);
+	/**
+	 * Must be overridden by user algo. This is called whenever a event of type state
+	 * occurs. It should process the state event and perform the necessary actions.
+	 * @param s the event parameter. The state for which animations are to be produced.
+	 */
+	virtual void process(const state &s)=0;
+};
+/**
+ * The Blackboard base class. A user algorithm must inherit from this class to
+ * implement its blackboard
+ */
+class Blackboard_base: public Listener<state>
+{
+public:
+	/**
+	 * GrContext object representing the screen just after drawing it. It is used by sprites
+	 * to redraw after the circle has moved over a part.
+	 */
+	GrContext ctemp;
+	Blackboard_base();
+	/**
+	 * The pure virtual (must be overridden) called only at the  beginning, to initialise
+	 * the blackboard or to draw the diagram on screen
+	 */
+	virtual void Init() = 0;
+	void processEvent(const state& s);
+	/**
+	 * Must be overridden by user algo. This is called whenever a event of type state
+	 * occurs. It should process the state event and perform the necessary actions.
+	 * @param s the event parameter. The state for which blackboard actions are to be produced.
+	 */
+	virtual void process(const state &s)=0;
+	/**
+	 * Must be overridden by user algo. This is called whenever a change of state
+	 * occurs. It should process the event and perform the necessary actions.
+	 */
+	virtual void nextStep()=0;
+};
+/**
+ * User algo base class. The user algo must inherit from this to implement its starter class.
+ */
+class IAlgoSim
+{
+public:
+	/**
+	 * the name of the algorithm. Used to represent the algorithm in the main menu
+	 */
+	string name;
+	/**
+	 * The path from which the user algo was compiled
+	 */
+	string basePath;
+	/**
+	 * Must return the pointer to class derived from Algorithm_base responsible to
+	 * handle the algorithm functions
+	 * @return pointer to derived class
+	 */
+	virtual Algorithm_base* GetAlgorithm()=0;
+	/**
+	 * Must return the pointer to class derived from Blackboard_base responsible to
+	 * handle the blackboard functions
+	 * @return pointer to derived class
+	 */
+	virtual Blackboard_base* GetBlackboard()=0;
+	/**
+	 * Must return the pointer to class derived from Animation_base responsible to
+	 * handle the animation functions
+	 * @return pointer to derived class
+	 */
+	virtual Animation_base* GetAnimation()=0;
+	/**
+	 * The user algo starts here
+	 */
+	virtual void Run()=0;
+};
+
+/**
+ * The main class to controlling the entire action.
+ */
+class appmain
+{
+public:
+	appmain()
+	{
+	}
+	void processEvent(const state &ev);
+	void Init(IAlgoSim *sim);
+	void Run();
+	void OneStepBack();
+	void OneStepForward();
+	state GetPrevState();
+	void betweenStep();
+};
+
+typedef IAlgoSim* create_t();
+/**
+ * The simplayer class scans and compiles the user algos.
+ */
+class simplayer
+{
+	/**
+	 * the path to scan
+	 */
+	string buildpath;
+public:
+	/**
+	 * A dictionary of scanned paths and its corresponding maker function pointer
+	 * Only the one's which successfully compiled.
+	 */
+	map<string, create_t*> CallList;
+	vector<string> ScanDirectory(string path);
+	void ProcessDirectory(string path);
+
+};
+#endif /* LIBALGOSIM_H_ */

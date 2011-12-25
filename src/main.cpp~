@@ -1,0 +1,100 @@
+#include <cstdlib>
+#include <vector>
+#include <X11/Xlib.h>
+#include "LibAlgoSim.h"
+
+vector<string> simplayer::ScanDirectory(string path)
+{
+	buildpath = path;
+	vector<string> ret;
+	struct dirent **namelist;
+	int n;
+	gc << "\nScanning Directories...";
+	gc.print();
+
+	n = scandir(path.c_str(), &namelist, 0, alphasort);
+	for (int i = 0; i < n; i++)
+	{
+		if (namelist[i]->d_type == DT_DIR && strcmp(namelist[i]->d_name, "..") && strcmp(namelist[i]->d_name, "."))
+			ret.push_back(namelist[i]->d_name);
+	}
+	return ret;
+}
+
+void simplayer::ProcessDirectory(string path)
+{
+	string delcom = "rm " + buildpath + path + "/*.so";
+	gc << "\nRemoving previous builds(" << delcom << ")...";
+	gc.print();
+	system(delcom.c_str());
+	string homepath = getenv("HOME");
+	homepath += "/Algosim/algos/";
+	string incl_path = homepath + "common/";///home/nidheeshdas/project/simplayer/library/
+	string command = "g++ -ggdb -I"+ incl_path+" -shared -fPIC -o " + buildpath + path + "/lib" + path + ".so "
+			+ buildpath + path + "/*.cpp";
+	gc << "\nBuilding libraries(" << buildpath << path << "/*.cpp" << ")...";
+	gc.print();
+	system(command.c_str());
+	string open_path = buildpath + path + "/lib" + path + ".so";
+	void* handle = dlopen(open_path.c_str(), RTLD_LAZY);
+	if (!handle)
+	{
+		cerr << "Cannot open library: " << dlerror() << '\n';
+		return;
+	}
+	create_t* caller = (create_t*) dlsym(handle, "maker");
+	CallList.insert(pair<string, create_t*> (buildpath + path, caller));
+}
+extern Display * _XGrDisplay;
+/**
+  @mainpage AlgoSim: A extensible Algorithm Simulator
+ */
+int main(int ac, char **ag)
+{
+	char title[] = "AlgoSim";
+	int status = XInitThreads();
+	gc.Init(800, 600);
+	GrSetWindowTitle(title);
+
+	do
+	{
+		string homepath = getenv("HOME");
+		homepath += "/Algosim/algos/";
+		string homeImage = homepath + "media/home.jpg";
+		gc.DrawImage(0, 0, 800, 200, I_JPG, homeImage.c_str());
+		gc.setXY(0, 100);
+		vector<string> paths;
+		simplayer sm;
+		appmain app;
+		string input;
+		gc.gto.txo_fgcolor.v = GrAllocColor(0, 255, 0);
+		
+		paths = sm.ScanDirectory(homepath);
+		//paths = sm.ScanDirectory(ag[1]);
+		//cout << ag[1];
+		//std::cerr << paths.size() << homepath << endl ;
+		for (unsigned int i = 0; i < paths.size(); i++)
+		{
+			sm.ProcessDirectory(paths[i]);
+		}
+		vector<IAlgoSim*> algos;
+		gc << "\n\nLoading libraries...\n\n";
+		gc.print();
+		map<string, create_t*>::iterator it = sm.CallList.begin();
+		for (unsigned int i = 0; i < sm.CallList.size(); i++)
+		{
+			algos.push_back((it->second)());
+			algos[i]->basePath = it->first;
+			gc << i + 1 << ". " << algos[i]->name << endl;
+			it++;
+		}
+		gc << "\n\nEnter the algo: (press 'z' to exit) : ";
+		gc.print();
+		input = gc.scan();
+		if (input[0] == 'z' || input[0] == 'Z')
+			exit(0);
+		app.Init(algos[atoi(input.c_str()) - 1]);
+		app.Run();
+		gc.clrscr();
+	} while (1);
+}
